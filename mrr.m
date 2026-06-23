@@ -48,6 +48,12 @@ classdef mrr
             h_drop= 1/k*(1-obj.r^2)./(1-obj.r^2*exp(-1i*beta*obj.L_ring)); %frequency domain description of the MRR
         end    
         
+        % Frequency domain descritpion of the ODE
+        function H_ODE = h_ode(obj, Df, k)
+            t_c = obj.tau_c;
+            H_ODE=1/k*(1/t_c)./(1/t_c+1i*2*pi*Df);
+        end    
+
         % Computing the Free Spectral Range
         % ng: group index
         function fsr = FSR(obj, ng)
@@ -59,6 +65,10 @@ classdef mrr
         % M: integer greater than 0
         function f0 = resonant_frequency(obj, neff, M)
             f0 = mrr.c / (neff * obj.L_ring) * M;
+        end    
+        
+        function quality_factor = Q(obj, f0)
+            quality_factor = 2 * pi * f0 * obj.tau_c;
         end    
 
     end    
