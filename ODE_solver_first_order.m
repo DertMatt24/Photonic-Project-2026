@@ -7,12 +7,11 @@ A=1e9;  %time scaling parameter  [nano 10^9]
 
 % Input signal x(t)
 C=4;
-%x = @(t) sin(t*1e12); %sinusoidal signal
-%A*t*exp(-(A*t).^2).*cos(3*A*t);   %arbitrary signal
-x = @(t) C*(t > 0);    % step function (Heaviside) 
+%x = Model_utils.step_function(C); % step function (Heaviside) 
+x = Model_utils.super_gaussian_function(45.8, 1);
 
 % Definition of the ODE
-odefun = @(t,y) A*(x(t) - k*y);
+odefun = Model_utils.first_order_ode(A, k, x);
 
 % Initial condition
 y0 = 1;
@@ -34,11 +33,11 @@ MRR = mrr(R, neff, k, A);
 N=1e5;
 time=linspace(min(t),max(t),N);
 dt=time(2)-time(1);
-in_ring = zeros(size(time));
-in_ring(find(time>0))=C;
+in_ring = x(time);
 IN_ring=fftshift(fft(in_ring));
 
 Df=linspace(-1/(2*dt),1/(2*dt),N);
+
 
 %% computing output
 
