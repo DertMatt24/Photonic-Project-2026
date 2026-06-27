@@ -18,19 +18,21 @@ classdef Model_utils
            
         
         % Super gaussian function
-        function x = super_gaussian_function(FWHM, m)
+        function x = super_gaussian_function(FWHM, A, m)
             arguments
                 % FWHM in paper 4.7: FWHM = 19.07 ps m = 1 gaussian
                 % FWHM in paper 4.7: FWHM = 41.54 ps for supergaussian
                 FWHM (1,1) double
+                A (1,1) double % time scaling parameter
                 m (1,1) double = 1 % by dedfault is a gaussian
             end    
- 
+            FWHM = FWHM/A;
             x = @(t) exp( -log(2) .* ( (2 .* t) ./ FWHM ).^(2*m) );
         end    
         
-        function x = gaussian_chirped(FWHM, C)
+        function x = gaussian_chirped(FWHM, A, C)
             % chirped parameter used in paper 4.7: C = [3, 2.5]
+            FWHM = FWHM/A;
             sigma = FWHM / (2*sqrt(2*log(2)));
             x = @(t) abs(exp(-(1 + 1j*C) .* t.^2 / (2*sigma^2))).^2;
         end    
@@ -46,6 +48,15 @@ classdef Model_utils
     methods (Static)
         function odefun = first_order_ode(A, k, x)
             odefun = @(t,y) A*(x(t) - k*y);
+        end
+
+        function odefun = first_order_lti(a0, b0, x, x_d)
+            odefun = @(t, y) -a0*y + x_d(t) + b0*x(t);
         end    
-    end    
+    end
+    
+    %% GENERAL UTILS
+    methods (Static)
+           
+    end 
 end    

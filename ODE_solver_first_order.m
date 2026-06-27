@@ -1,17 +1,21 @@
 close all
 clear all 
+clc
 
-
+k_eq = 0.5; % ns^-1
 k = 0.5;  % ns^-1
 A=1e9;  %time scaling parameter  [nano 10^9]
 
 % Input signal x(t)
 C=4;
-% x = Model_utils.step_function(C); % step function (Heaviside) 
-x = Model_utils.sin_function(A);
+x = Model_utils.step_function(C); % step function (Heaviside) 
+%x = Model_utils.sin_function(A);
+%x = Model_utils.super_gaussian_function(19.07, A);
+%x = Model_utils.gaussian_chirped(19.07, A, C);
+%x = Model_utils.arbitrary_signal(A);
 
 % Definition of the ODE
-odefun = Model_utils.first_order_ode(A, k, x);
+odefun = Model_utils.first_order_ode(A, k_eq, x);
 
 % Initial condition
 y0 = 0;
@@ -39,18 +43,20 @@ IN_ring=fftshift(fft(in_ring));
 Df=linspace(-1/(2*dt),1/(2*dt),N);
 
 
-
-
 %% computing output
 
-H_drop = MRR.h_drop_f(Df);
+[H_drop, H_drop_norm] = MRR.h_drop_f(Df);
 H_ODE = MRR.h_ode(Df);
 
 Out_ring=IN_ring.*H_drop;
 Out_ODE=IN_ring.*H_ODE;
 
+Out_ring_plot = IN_ring.*H_drop_norm;
+
 out_ring=real(ifft(fftshift(Out_ring)));
-out_oude=real(ifft(fftshift(Out_ODE)));
+out_ode=real(ifft(fftshift(Out_ODE)));
+
+out_ring_plot = real(ifft(fftshift(Out_ring_plot)));
 
 %% Tunable k from paper 4.7 using voltage
 % Table to link faster Voltage to k tuned values
@@ -60,17 +66,18 @@ out_oude=real(ifft(fftshift(Out_ODE)));
 MRR_Yang = mrr(R, neff, k, A);
 MRR_Yang.tuning_voltage(0.0, A);
 
-H_drop_Yang = MRR_Yang.h_drop_f(Df);
+[H_drop_Yang, H_drop_Yang_norm] = MRR_Yang.h_drop_f(Df);
 H_ODE_Yang = MRR_Yang.h_ode(Df);
 
+Out_ring_Yang = IN_ring .* H_drop_Yang;
 Out_ODE_Yang=IN_ring.*H_ODE_Yang;
 
+Out_ring_Yang_plot = IN_ring .* H_drop_Yang_norm;
 
-out_oude_Yang=ifft(fftshift(Out_ODE_Yang));
-
-
-Out_ring_Yang = IN_ring .* H_drop_Yang;
 out_ring_Yang = real(ifft(ifftshift(Out_ring_Yang)));
+out_ode_Yang=ifft(fftshift(Out_ODE_Yang));
+
+out_ring_Yang_plot = real(ifft(fftshift(Out_ring_Yang_plot)));
 
 %% Tunable k from paper 4.6 using heaters
 
@@ -85,16 +92,16 @@ t_min=-1;t_max=20;
 utils = graph_drawer(t_min, t_max, time);
 
 figure(1)
-utils.input_output_power(in_ring, out_ring,t ,y);
+utils.input_output_power(in_ring, out_ring_plot,t ,y, A);
 
 figure(2)
-graph_drawer.spectrum_f(Df, H_drop, H_ODE, IN_ring);
+graph_drawer.spectrum_f(Df, H_drop, H_ODE, IN_ring, A);
 
 
 %% generate plots Yang 4.7
 
 figure(3)
-utils.input_output_power(in_ring, out_ring_Yang,t ,y);
+utils.input_output_power(in_ring, out_ring_Yang_plot,t ,y, A);
 
 figure(4)
-graph_drawer.spectrum_f(Df, H_drop_Yang, H_ODE_Yang, IN_ring);
+graph_drawer.spectrum_f(Df, H_drop_Yang, H_ODE_Yang, IN_ring, A);

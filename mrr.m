@@ -79,10 +79,11 @@ classdef mrr < handle
         
         %% Drop port
         % Computing the h_drop function in frequency domain
-        function h_drop = h_drop_f(obj, Df)
+        function [h_drop, h_drop_normalized] = h_drop_f(obj, Df)
             k = obj.k_ring / obj.A;
             beta=2 * pi * Df / mrr.c * obj.neff;
-            h_drop= 1/k*(1-obj.r^2)./(1-obj.r^2*exp(-1i*beta*obj.L_ring)); %frequency domain description of the MRR
+            h_drop= (1-obj.r^2)./(1-obj.r^2*exp(-1i*beta*obj.L_ring)); %frequency domain description of the MRR
+            h_drop_normalized = 1/k * h_drop;
         end    
         
         % Frequency domain descritpion of the ODE
@@ -94,11 +95,12 @@ classdef mrr < handle
         
         %% Through port
         % Through port transfer function
-        function h_through = h_through_f(obj, Df)
+        function [h_through, h_through_norm] = h_through_f(obj, Df)
             k = obj.k_ring / obj.A;
             beta = 2 * pi * Df / mrr.c * obj.neff;
-            h_through = 1/k * obj.r * (1 - exp(-1i*beta*obj.L_ring)) ./ ...
+            h_through = obj.r * (1 - exp(-1i*beta*obj.L_ring)) ./ ...
                         (1 - obj.r^2 * exp(-1i*beta*obj.L_ring));
+            h_through_norm = h_through * 1/k;
         end 
         
         function H_ODE_through = h_ode_through(obj, Df, a0, b0)
@@ -132,6 +134,21 @@ classdef mrr < handle
 
             q = w0 * ng * obj.L_ring / (mrr.c * log(1-etha));
         end
+        
+        % This function computes the parameters definedd in the paper 4.6
+        % Note: b1 is constant at one for first order LTI
+        function [a0, b0] = parameters_LTI(obj, f0, Qi, Qe1, Qe2)
+            w0 = 2*pi*f0;
+            
+            % doubling Q-factors to make the code readable
+            d_Qi = Qi*2;
+            d_Qe1 = Qe1*2;
+            d_Qe2 = Qe2*2;
+            
+            % computing a0, b0 coefficients as the paper shows
+            a0 = w0 * (1/d_Qi + 1/d_Qe1 + 1/d_Qe2);
+            b0 = w0 * (1/d_Qi + 1/d_Qe2 - 1/d_Qe1);
+        end   
 
         %% Computing power difference
         
