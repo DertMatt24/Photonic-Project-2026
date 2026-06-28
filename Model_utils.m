@@ -31,10 +31,11 @@ classdef Model_utils
         end    
         
         function x = gaussian_chirped(FWHM, A, C)
-            % chirped parameter used in paper 4.7: C = [3, 2.5]
-            FWHM = FWHM/A;
+            FWHM = FWHM / A;
+           
             sigma = FWHM / (2*sqrt(2*log(2)));
-            x = @(t) abs(exp(-(1 + 1j*C) .* t.^2 / (2*sigma^2))).^2;
+            
+            x = @(t) exp(-(1 + 1j*C) .* t.^2 / (2*sigma^2));
         end    
 
         function x = arbitrary_signal(A)
