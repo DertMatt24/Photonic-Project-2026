@@ -31,7 +31,7 @@ tspan = [-100e-9 100e-9];
 
 R=5000e-6;  %radiurn of the MRR
 neff=1.5;   %effective index of the MRR waveguide
-MRR = mrr(R, neff, k, A);
+MRR = mrr(R, neff, k, A, 0);
 
 
 N=1e5;
@@ -63,7 +63,7 @@ out_ring_plot = real(ifft(fftshift(Out_ring_plot)));
 % V = [0.0  , 0.9   , 1.0   , 1.1   , 1.3]; [V]
 % k = [38.0 , 46.0  , 54.0  , 63.0  , 82.0]; [ns-1]
 
-MRR_Yang = mrr(R, neff, k, A);
+MRR_Yang = mrr(R, neff, k, A, 0);
 MRR_Yang.tuning_voltage(0.0, A);
 
 [H_drop_Yang, H_drop_Yang_norm] = MRR_Yang.h_drop_f(Df);
@@ -80,7 +80,7 @@ out_ode_Yang=ifft(fftshift(Out_ODE_Yang));
 out_ring_Yang_plot = real(ifft(fftshift(Out_ring_Yang_plot)));
 
 %% Tunable k from paper 4.6 using heaters
-
+dx = Model_utils.derivative(x);
 
 %% Computing power loss for each architectures
 [p, db] = MRR.power_loss(in_ring, out_ring, dt)

@@ -41,6 +41,10 @@ classdef Model_utils
             x = @(t) A.*t.*exp(-(A*t).^2).*cos(3*A*t);
         end    
         
+        function xd = derivative(x)
+            h = eps;
+            xd = @(t) (x(t+h) - x(t-h))/ (2*h);
+        end    
         
     end    
     

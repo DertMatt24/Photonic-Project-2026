@@ -64,6 +64,10 @@ classdef graph_drawer
             plot(Df/A,10*log10(abs(H_drop./max(abs(H_drop))).^2),'r','LineWidth',2)
             plot(Df/A,10*log10(abs(H_ODE./max(H_ODE)).^2),'b','LineWidth',2)
             plot(Df/A,10*log10(abs(IN_ring./max(abs(IN_ring))).^2),'k','LineWidth',2)
+
+            legend('MRR ODE', 'Ideal ODE', 'Input Signal Spectrum', ...
+           'Location', 'southwest', 'FontSize', 10);
+
             set(gca,'fontsize',12)
             ylim([-30 0])
             xlim([-15 15])

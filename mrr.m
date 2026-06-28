@@ -11,6 +11,7 @@ classdef mrr < handle
         tau_n   % dimensionless ratio between cavity lifetime and round trip time
         r       % coupling coefficient of the directional coupler of the MRR
         A       % time scale factor
+        alpha   % Loss factor
     end
     
     properties (Constant)
@@ -28,8 +29,8 @@ classdef mrr < handle
         % k: Inverse of the cavity life time (how much time a photon
         % remains trapped inside the ring)
         % A: Time scaling parameter used to normalize the ODE solver, for numerical stability.
-        function obj = mrr(R_input, neff_in, k, A)
-            if nargin == 4 % robustness, if no enough parameters are used the object is not built.
+        function obj = mrr(R_input, neff_in, k, A, loss_factor)
+            if nargin == 5 % robustness, if no enough parameters are used the object is not built.
                 obj.R = R_input;
                 obj.neff = neff_in; % effective index of the MRR waveguide
 
@@ -44,6 +45,7 @@ classdef mrr < handle
                 obj.r = sqrt(obj.tau_n/(1+obj.tau_n));
 
                 obj.A = A;
+                obj.alpha = loss_factor;
             else
                error("mrr build failed, be sure to have inserted 4 parameters!") 
             end    
@@ -82,7 +84,9 @@ classdef mrr < handle
         function [h_drop, h_drop_normalized] = h_drop_f(obj, Df)
             k = obj.k_ring / obj.A;
             beta=2 * pi * Df / mrr.c * obj.neff;
-            h_drop= (1-obj.r^2)./(1-obj.r^2*exp(-1i*beta*obj.L_ring)); %frequency domain description of the MRR
+            gamma = (obj.alpha + 1i*beta) * obj.L_ring;
+
+            h_drop= (1-obj.r^2)./(1-obj.r^2*exp(-gamma)); %frequency domain description of the MRR
             h_drop_normalized = 1/k * h_drop;
         end    
         
@@ -98,8 +102,10 @@ classdef mrr < handle
         function [h_through, h_through_norm] = h_through_f(obj, Df)
             k = obj.k_ring / obj.A;
             beta = 2 * pi * Df / mrr.c * obj.neff;
-            h_through = obj.r * (1 - exp(-1i*beta*obj.L_ring)) ./ ...
-                        (1 - obj.r^2 * exp(-1i*beta*obj.L_ring));
+            gamma = (obj.alpha + 1i*beta) * obj.L_ring;
+
+            h_through = obj.r * (1 - exp(-gamma)) ./ ...
+                        (1 - obj.r^2 * exp(-gamma));
             h_through_norm = h_through * 1/k;
         end 
         
