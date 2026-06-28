@@ -2,7 +2,7 @@ classdef mrr < handle
     % MRR Class for simulating a Microring Resonator.
 
     properties
-        R       % radiurn of the MRR
+        R       % radius of the MRR
         neff    % effective index of the MRR waveguide 
         k_ring  % scaled coupling coefficient (linked to the ODE model)
         tau_c   % cavity lifetime of the photons [seconds]
@@ -12,6 +12,8 @@ classdef mrr < handle
         r       % coupling coefficient of the directional coupler of the MRR
         A       % time scale factor
         alpha   % Loss factor
+        k_0     % power coupling coefficient at each single directional coupling point (Eq. 8, paper 4.6)
+
     end
     
     properties (Constant)
@@ -154,7 +156,36 @@ classdef mrr < handle
             % computing a0, b0 coefficients as the paper shows
             a0 = w0 * (1/d_Qi + 1/d_Qe1 + 1/d_Qe2);
             b0 = w0 * (1/d_Qi + 1/d_Qe2 - 1/d_Qe1);
-        end   
+        end
+
+        %% Paper 4.6, Eq. 8: Effective coupling coefficients of the interferometric coupler
+        %
+        % Called once per coupler, calculate the related coupling
+        % coefficient
+        %
+        % n_b : effective index of the bus arm
+        % L_b : physical length of the bus arm
+        % n_r : effective index of the ring arm
+        % L_r :  physical length of the bus ring arm
+        % lambda0  : wavelength at which the coefficient is evaluated
+        %
+        % Returns:
+        % k        : effective power coupling coefficient of the coupler
+        %
+        function k = kappa(obj, n_b, L_b, n_r, L_r, lambda0)
+            if isempty(obj.k_0)
+                error("k_0 is not set. Define obj.k_0 (e.g. obj.kappa0 = 0.0441;) before calling kappa().")
+            end
+ 
+            phi_b = 2*pi*n_b*L_b/lambda0; % phase shift along the bus arm
+            phi_r = 2*pi*n_r*L_r/lambda0; % phase shift along the ring arm
+ 
+            T_b = exp(-2*obj.alpha*L_b); % power transmission factor, bus arm
+            T_r = exp(-2*obj.alpha*L_r); % power transmission factor, ring arm
+ 
+            k = obj.k_0*(1-obj.k_0) * (T_b + T_r + 2*sqrt(T_b*T_r)*cos(phi_b - phi_r));
+        end
+
 
         %% Computing power difference
         
