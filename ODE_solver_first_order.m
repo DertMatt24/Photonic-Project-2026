@@ -44,9 +44,13 @@ Df=linspace(-1/(2*dt),1/(2*dt),N);
 
 
 %% computing output
+fsr = MRR.FSR(1.5);
+b3db = MRR.B3dB(fsr);
+delta_f = linspace(-20 * b3db, 20 * b3db, N);
 
-[H_drop, H_drop_norm] = MRR.h_drop_f(Df);
-H_ODE = MRR.h_ode(Df);
+delta_f = delta_f(1);
+[H_drop, H_drop_norm] = MRR.h_drop_f(Df, delta_f);
+H_ODE = MRR.h_ode(Df, delta_f);
 
 Out_ring=IN_ring.*H_drop;
 Out_ODE=IN_ring.*H_ODE;
@@ -66,8 +70,8 @@ out_ring_plot = real(ifft(fftshift(Out_ring_plot)));
 MRR_Yang = mrr(R, neff, k, A, 0);
 MRR_Yang.tuning_voltage(0.0, A);
 
-[H_drop_Yang, H_drop_Yang_norm] = MRR_Yang.h_drop_f(Df);
-H_ODE_Yang = MRR_Yang.h_ode(Df);
+[H_drop_Yang, H_drop_Yang_norm] = MRR_Yang.h_drop_f(Df, 0);
+H_ODE_Yang = MRR_Yang.h_ode(Df, 0);
 
 Out_ring_Yang = IN_ring .* H_drop_Yang;
 Out_ODE_Yang=IN_ring.*H_ODE_Yang;

@@ -83,9 +83,10 @@ classdef mrr < handle
         
         %% Drop port
         % Computing the h_drop function in frequency domain
-        function [h_drop, h_drop_normalized] = h_drop_f(obj, Df)
+        function [h_drop, h_drop_normalized] = h_drop_f(obj, Df, delta_f)    
             k = obj.k_ring / obj.A;
-            beta=2 * pi * Df / mrr.c * obj.neff;
+            
+            beta=2 * pi * (Df - delta_f) / mrr.c * obj.neff;
             gamma = (obj.alpha + 1i*beta) * obj.L_ring;
 
             h_drop= (1-obj.r^2)./(1-obj.r^2*exp(-gamma)); %frequency domain description of the MRR
@@ -93,17 +94,17 @@ classdef mrr < handle
         end    
         
         % Frequency domain descritpion of the ODE
-        function H_ODE_drop = h_ode(obj, Df)
+        function H_ODE_drop = h_ode(obj, Df, delta_f)
             k = obj.k_ring / obj.A; 
             t_c = obj.tau_c;
-            H_ODE_drop=1/k*(1/t_c)./(1/t_c+1i*2*pi*Df);
+            H_ODE_drop=1/k*(1/t_c)./(1/t_c+1i*2*pi*(Df - delta_f));
         end    
         
         %% Through port
         % Through port transfer function
-        function [h_through, h_through_norm] = h_through_f(obj, Df)
+        function [h_through, h_through_norm] = h_through_f(obj, Df, delta_f)
             k = obj.k_ring / obj.A;
-            beta = 2 * pi * Df / mrr.c * obj.neff;
+            beta = 2 * pi * (Df - delta_f) / mrr.c * obj.neff;
             gamma = (obj.alpha + 1i*beta) * obj.L_ring;
 
             h_through = obj.r * (1 - exp(-gamma)) ./ ...
@@ -111,8 +112,9 @@ classdef mrr < handle
             h_through_norm = h_through * 1/k;
         end 
         
-        function H_ODE_through = h_ode_through(obj, Df, a0, b0)
-            H_ODE_through = (b0 + 1i*2*pi*Df) ./ (a0 + 1i*2*pi*Df);
+        function H_ODE_through = h_ode_through(obj, Df, a0, b0, delta_f)
+            delta_Df = Df - delta_f;
+            H_ODE_through = (b0 + 1i*2*pi*delta_Df) ./ (a0 + 1i*2*pi*delta_Df);
         end
         
         %%
@@ -129,6 +131,13 @@ classdef mrr < handle
             f0 = mrr.c / (neff * obj.L_ring) * M;
         end    
         
+        % Banwidth at -3dB from the peak
+        % fsr: Free Spectral Range
+        function b3db = B3dB(obj, fsr)
+            t_2 = 1 - obj.r^2;
+            b3db = fsr * t_2 / pi;
+        end
+
         % Computing the quality factor
         % f0: frequency [Hz]
         function quality_factor = Q(obj, f0)

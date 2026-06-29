@@ -74,5 +74,42 @@ classdef graph_drawer
             xlabel('Frequency [GHz]')
             ylabel('Spectrum [dB]')
         end
+
+        function power_graph(phase_detuning, P_optical_out, P_in)
+            % Converting output in dB
+            P_out_dB = 10 * log10((P_optical_out ./ P_in));
+            
+            plot(phase_detuning, P_out_dB, 'b', 'LineWidth', 1.5);
+            grid on;
+            xlabel('Phase Detuning \Delta\phi [rad]');
+            ylabel('Power transmitted [dB]');
+            title('Output Power vs Phase Detuning');
+            xlim([min(phase_detuning) max(phase_detuning)]);
+            ylim([max(P_out_dB)-50, max(P_out_dB)+2]); 
+        end
+
+        function power_loss(phase_detuning, P_lost, P_in)
+            % Converting power lost in dB
+            P_lost_dB = 10 * log10((P_lost ./ P_in));
+       
+            plot(phase_detuning, P_lost_dB, 'r', 'LineWidth', 2, 'DisplayName', 'Power loss [dB]');
+            hold on; 
+        
+            % finding minimum power lost
+            [min_val, ~] = min(P_lost_dB);
+            yline(min_val, '--k', sprintf('  min = %.2f dB', min_val), ...
+                  'LabelVerticalAlignment', 'bottom', 'Alpha', 0.5, ...
+                  'DisplayName', 'Minimum power used');
+
+            grid on;
+            xlabel('Phase Detuning \Delta\phi [rad]');
+            ylabel('Power lost [dB]');
+            title('Power loss vs Phase detuning');
+            legend('show', 'Location', 'southwest');
+            xlim([min(phase_detuning) max(phase_detuning)]);
+            ylim([min(P_lost_dB)-2, max(P_lost_dB)+2]);
+            
+            hold off; 
+        end
     end    
 end    
