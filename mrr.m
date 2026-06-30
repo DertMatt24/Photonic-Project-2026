@@ -13,7 +13,10 @@ classdef mrr < handle
         A       % time scale factor
         alpha   % Loss factor
         k_0     % power coupling coefficient at each single directional coupling point (Eq. 8, paper 4.6)
-
+        
+        % more on this on paper 4.7 Yang et al.
+        k_v_fun % function that bonds voltage to k: k = f(V)
+        inv_v_k % inverse of the aforementioned function: V = f^-1(k)
     end
     
     properties (Constant)
@@ -48,6 +51,9 @@ classdef mrr < handle
 
                 obj.A = A;
                 obj.alpha = loss_factor;
+
+                % computing functions for paper 4.7
+                [obj.k_v_fun, obj.inv_v_k] = mrr.k_v_function();
             else
                error("mrr build failed, be sure to have inserted 4 parameters!") 
             end    
@@ -65,22 +71,31 @@ classdef mrr < handle
             obj.r = sqrt(obj.tau_n/(1+obj.tau_n));
         end    
         
+        %% Paper 4.7 tuning using voltage
         % Function to tune k using voltage as input
         % voltage: voltage value in [0.0, 0.9, 1.0, 1.1, 1.3]
         % A: time scale
-        function obj = tuning_voltage(obj, voltage, A)
-            id = find(mrr.V_Yang == voltage);
-            % if id is empty, it means that the voltage value inserted was
-            % not documented inside the paper 4.7, so we return an error
-            % due to unknown behaviour
-            if ~isempty(id)
-                obj.tuning_k(mrr.k_Yang(id)); % tuning to known k parameter
-            else
-                error("The voltage value is not supported. Supported values: [%s]", num2str(mrr.V))
-            end    
+        function obj = tuning_voltage(obj, voltage)
+            if voltage < 0.0 || voltage > 1.3
+                error("Voltage value not supported by current implementation. Voltage must be between 0.0 and 1.3 Volt")
+            end
+
+            k_new = obj.k_v_fun(voltage);
+            obj.tuning_k(k_new);
                 
         end    
-        
+         
+        % This function simulates an external software that, given the
+        % desired k we want to reach, it returns the voltage we need to
+        % apply to the MRR.
+        %
+        % desired_k: k value we want to have on the MRR
+        % 
+        % v: voltage we have to apply to the MRR to reach the desired k
+        function v = voltage_to_reach_k(obj, desired_k)
+            v = obj.inv_v_k(desired_k);
+        end
+
         %% Drop port
         % Computing the h_drop function in frequency domain
         function [h_drop, h_drop_normalized] = h_drop_f(obj, Df, delta_f)    
@@ -214,7 +229,77 @@ classdef mrr < handle
 
             P_loss = P_out - P_in;
             P_loss_dB = 10*log10(P_out/P_in);
-        end    
+        end
     end    
+    
+    methods (Static)
+        function [fun, inv] = k_v_function()
+            V_known = mrr.V_Yang;
+            k_known = mrr.k_Yang;
+            
+            % from 0 to 0.9 we model the function as a second order polynom
+            b_coeff = 5;     
+            c_coeff = 38; % for V= 0.0 k is 38 ns-1
+            a_coeff = (k_known(2) - c_coeff - b_coeff*V_known(2)) / V_known(2)^2;
+            poly_part = @(v) a_coeff*v.^2 + b_coeff*v + c_coeff;
+            
+            % from 0.9 to 1.3 we connect the dots using linear interpolation
+            V_linear = V_known(2:end);
+            k_linear = k_known(2:end);
+            
+            % joining the two interpolation
+            % [0.0, 0.9] -> polynomial 2nd order
+            % (0.9, 1.3] -> linear
+            fun = @(V) arrayfun(@(v) ...
+                poly_part(v) * (v <= 0.9) + ...
+                interp1(V_linear, k_linear, max(v, V_linear(1)), 'linear') * (v > 0.9), V);
+            
+            % calculating inverse function
+            % pol inversion
+            poly_inv = @(k) (b_coeff - sqrt(b_coeff^2 - 4*a_coeff*(c_coeff - k)))/ (-2*a_coeff); 
+            % linear interpolation inversion
+            linear_inv = @(k) interp1(k_linear, V_linear, max(k, k_linear(1)), 'linear');
+            % computing inverse of all function
+            inv = @(K) arrayfun(@(k) ...
+                poly_inv(k) * (k <= 46) + ...
+                linear_inv(k) * (k > 46), K);
+        end
+    end
 
+        methods 
+            function plot_k_v_function(obj)
+                V_known = mrr.V_Yang;
+                k_known = mrr.k_Yang;
+
+                % Plot the function
+                figure(1001); 
+                hold on;
+                V_dense = linspace(V_known(1), V_known(length(V_known)), 1000);
+
+                plot(V_dense, obj.k_v_fun(V_dense), 'b-', 'LineWidth', 2, ...
+                    'DisplayName', 'Function k(V)');
+                scatter(V_known, k_known, 100, 'ro', 'filled', ...
+                    'DisplayName', 'Known values');
+                xlabel('Voltage [V]'); ylabel('k [ns^{-1}]');
+                title('Function k(V)');
+                legend('Location', 'northwest'); grid on;
+                hold off;
+                
+                % Plot inverse
+                figure(1002); 
+                hold on;
+                k_dense = linspace(k_known(1), k_known(length(k_known)), 1000);            
+                
+                plot(k_dense, obj.inv_v_k(k_dense), 'g-', 'LineWidth', 2, ...
+                    'DisplayName', 'Inverse function V(k)');            
+                scatter(k_known, V_known, 100, 'ro', 'filled', ...
+                    'DisplayName', 'Known values');            
+                xlabel('k [ns^{-1}]');
+                ylabel('Voltage [Volt]');
+                title('Inverse function');
+                legend('Location', 'northwest');
+                grid on;
+                hold off;
+            end
+        end
 end
