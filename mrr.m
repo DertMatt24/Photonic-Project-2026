@@ -164,7 +164,7 @@ classdef mrr < handle
         function q = Q_Wu(obj, f0, ng, etha)
             w0 = 2 * pi * f0;
 
-            q = w0 * ng * obj.L_ring / (mrr.c * log(1-etha));
+            q = - w0 * ng * obj.L_ring / (mrr.c * log(1-etha));
         end
         
         % This function computes the parameters definedd in the paper 4.6
@@ -203,9 +203,11 @@ classdef mrr < handle
  
             phi_b = 2*pi*n_b*L_b/lambda0; % phase shift along the bus arm
             phi_r = 2*pi*n_r*L_r/lambda0; % phase shift along the ring arm
- 
-            T_b = exp(-2*obj.alpha*L_b); % power transmission factor, bus arm
-            T_r = exp(-2*obj.alpha*L_r); % power transmission factor, ring arm
+            
+            alpha_Np = obj.alpha*log(10) / 20;
+
+            T_b = exp(-2*alpha_Np*L_b); % power transmission factor, bus arm
+            T_r = exp(-2*alpha_Np*L_r); % power transmission factor, ring arm
  
             k = obj.k_0*(1-obj.k_0) * (T_b + T_r + 2*sqrt(T_b*T_r)*cos(phi_b - phi_r));
         end

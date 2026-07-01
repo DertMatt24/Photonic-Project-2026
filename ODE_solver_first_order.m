@@ -4,7 +4,7 @@ clc
 
 k_eq = 0.5; % ns^-1
 k = 0.5;  % ns^-1
-A=1e9;  %time scaling parameter  [nano 10^9]
+A = 1e9;  %time scaling parameter  [nano 10^9]
 
 % Input signal x(t)
 C=4;
@@ -86,9 +86,12 @@ out_ring_Yang_plot = real(ifft(fftshift(Out_ring_Yang_plot)));
 %% Tunable k from paper 4.6 using heaters
 dx = Model_utils.derivative(x);
 
+
+
 %% Computing power loss for each architectures
 [p, db] = MRR.power_loss(in_ring, out_ring, dt)
 [p_Yang, db_Yang]= MRR.power_loss(in_ring, out_ring_Yang, dt)
+% attraverso la through port per Wu
 
 %% generate plots
 t_min=-1;t_max=20;

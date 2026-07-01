@@ -55,7 +55,7 @@ classdef Model_utils
             odefun = @(t,y) A*(x(t) - k*y);
         end
 
-        function odefun = first_order_lti(a0, b0, x, x_d)
+        function odefun = first_order_lti(a0, b0, x, x_d) %paper 4.6
             odefun = @(t, y) -a0*y + x_d(t) + b0*x(t);
         end    
     end
