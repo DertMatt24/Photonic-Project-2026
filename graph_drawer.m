@@ -111,5 +111,86 @@ classdef graph_drawer
             
             hold off; 
         end
+        
+        % Method to plot the power loss in function of k_values changing
+        function plot_power_vs_k(k_values, power_k, k_perfect)
+            arguments
+                k_values (1,:) double 
+                power_k  (1,:) double 
+                k_perfect (1,1) double = NaN % value for which the MRR solves perfectly the input ODE
+            end
+            figure;
+            plot(k_values, power_k, 'b-', 'LineWidth', 1.5);
+            hold on;
+            
+            if ~ isnan(k_perfect)
+                xline(k_perfect, '--r', sprintf('k_{ideal} = %.2f ns^-1', k_perfect), ...
+                'LabelVerticalAlignment', 'bottom', 'LineWidth', 1.5);
+                k_legend = 'ideal_k';
+            else
+                xline(min(mrr.k_Yang), '--k', 'k = 38 ns^-1', 'LabelVerticalAlignment', 'bottom', ...
+                    'LineWidth', 1.5, 'DisplayName', 'Lower Limit (38 ns^-1)');
+                
+                xline(max(mrr.k_Yang), '--k', 'k = 81 ns^-1', 'LabelVerticalAlignment', 'bottom', ...
+                    'LineWidth', 1.5, 'DisplayName', 'Upper Limit (81 ns^-1)');
+                
+                k_legend = 'k limits (Yang et al.)';
+            end
+            
+            xlabel('k [ns^{-1}]');
+            ylabel('Power loss [dB]');
+            title('Power loss vs coefficient k');
+            legend('Power loss', k_legend, 'Location', 'best');
+            grid on;
+            hold off;
+        end
+        
+        % Method to plot rmse analysis
+        function plot_rmse_analysis(k_values, rmse_values, k_perfect)
+            arguments
+                k_values (1,:) double 
+                rmse_values  (1,:) double 
+                k_perfect (1,1) double = NaN % value for which the MRR solves perfectly the input ODE
+                                             % it corresponds to least rmse
+                                             % value
+            end
+
+            figure;
+            hold on;
+            grid on;
+            box on;
+        
+            plot(k_values, rmse_values, '-b', ...
+                'LineWidth', 2, ...
+                'MarkerEdgeColor', 'b', ...
+                'MarkerFaceColor', 'w', ...
+                'MarkerSize', 4);
+        
+            set(gca, 'FontSize', 12);
+            xlim([min(k_values) max(k_values)]);
+            
+            xlabel('Coupling Coefficient k [ns^{-1}]', 'FontSize', 12);
+            ylabel('RMSE', 'FontSize', 12);
+            title('RMSE analysis on scaled output (1/k)', 'FontSize', 14, 'FontWeight', 'bold');
+
+            if ~ isnan(k_perfect)
+                xline(k_perfect, '--r', sprintf('k_{ideal} = %.2f ns^-1', k_perfect), ...
+                'LabelVerticalAlignment', 'bottom', 'LineWidth', 1.5);
+                k_legend = 'ideal k';
+            else
+                xline(min(mrr.k_Yang), '--k', 'k = 38 ns^-1', 'LabelVerticalAlignment', 'bottom', ...
+                    'LineWidth', 1.5, 'DisplayName', 'Lower Limit (38 ns^-1)');
+                
+                xline(max(mrr.k_Yang), '--k', 'k = 81 ns^-1', 'LabelVerticalAlignment', 'bottom', ...
+                    'LineWidth', 1.5, 'DisplayName', 'Upper Limit (81 ns^-1)');
+                
+                k_legend = 'k limits (Yang et al.)';
+            end
+            
+            legend('rmse', k_legend, 'Location', 'best');
+
+            hold off;
+        end
+
     end    
 end    
