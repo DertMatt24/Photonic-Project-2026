@@ -23,7 +23,6 @@ classdef mrr_asym
         k1      % power coupling coefficient at through port
         k2      % power coupling coefficient at drop port
         tau_c   % cavity lifetime of the photons [seconds]
-        tau_n   % dimensionless ratio between cavity lifetime and round trip time
     end
 
     properties (Constant)
@@ -56,7 +55,6 @@ classdef mrr_asym
                 obj.k1 = [];
                 obj.k2 = [];
                 obj.tau_c = [];
-                obj.tau_n = [];
             else
                error("mrr build failed, be sure to have inserted 4 parameters!") 
             end    
@@ -129,41 +127,24 @@ classdef mrr_asym
             b0 = w0 * (1/d_Qi + 1/d_Qe2 - 1/d_Qe1);
         end
         
-%% through and drop functions
-function h_through = h_through_f(obj, Df, delta_f)
-    if isempty(obj.k1) || isempty(obj.k2)
-        error("k1, k2 non impostati. Chiama [obj.k1, obj.k2] = obj.kappa(lambda0) prima.")
-    end
+        %% through port function
+        function h_through = h_through_f(obj, Df, delta_f)
+            alpha_Np = obj.alpha * log(10) / 20; 
+            beta = 2 * pi * (Df - delta_f) / obj.c * obj.neff;
+            gamma = (alpha_Np + 1i*beta) * obj.L_ring;
+        
+            t1 = sqrt(1 - obj.k1);
+            t2 = sqrt(1 - obj.k2);
+        
+            h_through = (t1 - t2*exp(-gamma)) ./ (1 - t1*t2*exp(-gamma));
+        end
 
-    alpha_Np = obj.alpha * log(10) / 20; % coefficiente di campo [1/m]
-    beta = 2*pi*(Df - delta_f)/obj.c*obj.neff;
-    gamma = (alpha_Np + 1i*beta)*obj.L_ring;
-
-    t1 = sqrt(1 - obj.k1); % self-coupling, lato through
-    t2 = sqrt(1 - obj.k2); % self-coupling, lato drop
-
-    h_through = (t1 - t2*exp(-gamma)) ./ (1 - t1*t2*exp(-gamma));
-end
-
-function H_ODE_through = h_ode_through(obj, Df, a0, b0, delta_f)
-    delta_Df = Df - delta_f;
-    H_ODE_through = (b0 + 1i*2*pi*delta_Df) ./ (a0 + 1i*2*pi*delta_Df);
-end
-
-function h_drop = h_drop_f(obj, Df, delta_f)
-    if isempty(obj.k1) || isempty(obj.k2)
-        error("k1, k2 non impostati. Chiama [obj.k1, obj.k2] = obj.kappa(lambda0) prima.")
-    end
-
-    alpha_Np = obj.alpha * log(10) / 20;
-    beta = 2*pi*(Df - delta_f)/obj.c*obj.neff;
-    gamma = (alpha_Np + 1i*beta)*obj.L_ring;
-
-    t1 = sqrt(1 - obj.k1);
-    t2 = sqrt(1 - obj.k2);
-
-    h_drop = -sqrt(obj.k1*obj.k2)*exp(-gamma/2) ./ (1 - t1*t2*exp(-gamma));
-end
+        %% Through port — versione LINEARIZZATA (Eq. 3/4 del paper)
+        % Da chiamare con a0, b0 gia calcolati (via parameters_LTI).
+        function H_ODE_through = h_ode_through(obj, Df, a0, b0, delta_f)
+            delta_Df = Df - delta_f;
+            H_ODE_through = (b0 + 1i*2*pi*delta_Df) ./ (a0 + 1i*2*pi*delta_Df);
+        end
         
         
         %%
