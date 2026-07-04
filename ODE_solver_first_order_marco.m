@@ -4,11 +4,9 @@ clc
 
 A = 1e9;  %time scaling parameter  [nano 10^9]
 
-
-
 %% parameters definition from the paper:
-L_ring = 178.98e-6; %circumference of the ring
-R_ring = L_ring/(2*pi); %radius of the ring
+L_ring = 178.98e-6; % circumference of the ring
+R_ring = L_ring/(2*pi); % radius of the ring
 ng = 4.1850;
 neff = 2.45;
 
@@ -19,7 +17,7 @@ L_r2 = 47.12e-6;
 
 k0 = 0.0441;
 
-%% tentativo
+%% heater providing power
 eta1 = 6.35e-4;   % 1/mW, efficienza heater 1
 eta2 = 6.47e-4;   % 1/mW, efficienza heater 2
 
@@ -28,11 +26,19 @@ eta2 = 6.47e-4;   % 1/mW, efficienza heater 2
 % --> terzo test: a0 const, b0 varied (0, 11.94), (1.60,10.28), (2.39,8.72)
 % --> quarto test: a0 varied, b0 const
 
-P_heater1 = 1.60; % mW
-P_heater2 = 10.28; % mW
+P_heater1_1 = 0; % mW <20
+P_heater2_1 = 0; % mW <20
 
-nb1 = ng + eta1 * P_heater1;
-nb2 = ng + eta2 * P_heater2;
+% secondo ordine
+P_heater1_2 = 0; % mW <20
+P_heater2_2 = 0; % mW <20
+
+nb1_1 = ng + eta1 * P_heater1_1;
+nb2_1 = ng + eta2 * P_heater2_1;
+
+% secondo ordine
+nb1_2 = ng + eta1 * P_heater1_2;
+nb2_2 = ng + eta2 * P_heater2_2;
 
 alpha = 800; % (db/m) loss factor
 loss_dB_rt = alpha * L_ring; % loss in dB for round-trip
@@ -43,7 +49,7 @@ lambda0 = 1550.391e-9; % resonance wavelenghts
 f0 = mrr_asym.c / lambda0;
 
 %% inizialization of MRR
-MRR_Wu = mrr_asym(R_ring, neff, ng, k0, L_b1, L_r1, L_b2, L_r2, nb1, nb2, A, alpha);
+MRR_Wu = mrr_asym(R_ring, neff, ng, k0, L_b1, L_r1, L_b2, L_r2, nb1_1, nb2_1, A, alpha);
 
 % calcolo dei fattori k
 [MRR_Wu.k1, MRR_Wu.k2] = MRR_Wu.kappa(lambda0);
@@ -155,3 +161,51 @@ subplot(312); ylabel('Output y(t) & Through_{opt}'); legend('Exact solution', 'O
 subplot(313); ylabel('Output |y(t)|^2 & |Through_{opt}|^2'); legend('Power ODE |y|^2', 'Optical Power');
 
 % legenda AI slop perchè sono pigro
+
+%% secondo ordine
+
+MRR_Wu_2 = mrr_asym(R_ring, neff, ng, k0, L_b1, L_r1, L_b2, L_r2, nb1_2, nb2_2, A, alpha);
+
+% calcolo dei fattori k
+[MRR_Wu_2.k1, MRR_Wu_2.k2] = MRR_Wu_2.kappa(lambda0);
+
+Qi_2 = MRR_Wu_2.Q_Wu(f0, ng, etha);       % Q dovuto alle perdite interne della cavità
+Qe1_2 = MRR_Wu_2.Q_Wu(f0, ng, MRR_Wu_2.k1); % Q esterno dovuto alla Through Port
+Qe2_2 = MRR_Wu_2.Q_Wu(f0, ng, MRR_Wu_2.k2); % Q esterno dovuto alla Drop Port
+
+% riformulo i valori dati dal primo mrr
+a10 = a0;
+b10 = b0;
+
+% calcolo i coefficienti del secondo mrr
+[a20, b20] = MRR_Wu_2.parameters_LTI(f0, Qi_2, Qe1_2, Qe2_2)
+
+% EDO del secondo ordine (sistema a due stati)
+odefun2 = Model_utils.second_order_lti_scaled(a10, b10, a20, b20, x, x_d, A);
+y0_2 = [0; 0];
+
+[t_ns, y_2] = ode45(odefun2, tspan_ns, y0_2);
+
+y1 = y_2(:,1); % uscita through primo mrr
+y2 = y_2(:,2); % uscita through secondo mrr
+
+% cross check frequency
+H1_optical = MRR_Wu.h_through_f(Df, delta_f); 
+H2_optical = MRR_Wu_2.h_through_f(Df, delta_f);
+H_tot_optical = H1_optical .* H2_optical;
+
+H1_ODE = MRR_Wu.h_ode_through(Df, a10, b10, delta_f);
+H2_ODE = MRR_Wu_2.h_ode_through(Df, a20, b20, delta_f);
+H_tot_ODE = H1_ODE .* H2_ODE;
+
+Out2_optical = real(ifft(ifftshift(IN_ring .* H_tot_optical)));
+Out2_ODE     = real(ifft(ifftshift(IN_ring .* H_tot_ODE)));
+
+figure(2)
+utils.input_output_power(in_ring, Out2_optical,t ,y2, A);
+% Perfezionamento dei titoli e legende per adattarsi al comportamento Through
+subplot(311); title('Temporal Analysis - Through Port (Asym model)');
+subplot(312); ylabel('Output y(t) & Through_{opt}'); legend('ODE second order solution', 'Optical model');
+subplot(313); ylabel('Output |y(t)|^2 & |Through_{opt}|^2'); legend('Power ODE second order |y|^2', 'Optical Power');
+
+

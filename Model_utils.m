@@ -69,6 +69,24 @@ classdef Model_utils
             
             odefun = @(t, y) -a0_scaled*y + (1/A)*x_d(t/A) + b0_scaled*x(t/A);
         end
+
+        function odefun = second_order_lti_scaled(a10, b10, a20, b20, x, x_d, A)
+            odefun = @(t, y) Model_utils.cascade_Wu(t, y, a10, b10, a20, b20, x, x_d, A);
+        end
+
+        function dy = cascade_Wu(t, y, a10, b10, a20, b20, x, x_d, A)
+            % scale the coefficients
+            a10 = a10/A;
+            b10 = b10/A;
+            a20 = a20/A;
+            b20 = b20/A;
+
+            % sistema a due eq
+            dy1 = - a10*y(1) + (1/A)*x_d(t/A) + b10*x(t/A);
+            dy2 = - a20*y(2) + dy1 + b20*y(1);
+
+            dy = [dy1; dy2];
+        end
     end
     
     %% GENERAL UTILS
