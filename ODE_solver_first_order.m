@@ -17,8 +17,6 @@ C=4;
 % FWHM = 19.07;
 FWHM = 19.07 * 1e-3; 
 
-
-
 %x = Model_utils.step_function(C); % step function (Heaviside) 
 %x = Model_utils.sin_function(A);
 x = Model_utils.super_gaussian_function(FWHM,A);
@@ -51,12 +49,7 @@ MRR = mrr(R, neff, k, A, 0);
 fsr = MRR.FSR(MRR.neff);
 b3db = MRR.B3dB(fsr);
 
-tau = 1 / (pi * b3db)
-T_signal = 2 * pi / A; 
-fwhm_in = 10/ A;
-stress_factor = tau / T_signal;
-stress_factor = tau / fwhm_in;
-n_fsr_range = 2; 
+n_fsr_range = 1; 
 dt_max = 1 / (2 * n_fsr_range * fsr);
 
 dt = (max(t) - min(t)) / (N - 1);
@@ -91,11 +84,6 @@ out_ode=real(ifft(ifftshift(Out_ODE)));
 
 out_ring_plot = real(ifft(ifftshift(Out_ring_plot)));
 
-%% Tunable k from paper 4.6 using heaters
-dx = Model_utils.derivative(x);
-
-
-
 %% Computing power loss for each architectures
 [p, db] = MRR.power_loss(in_ring, out_ring, dt)
 
@@ -104,20 +92,19 @@ t_min=-1;t_max=20;
 
 utils = graph_drawer(t_min, t_max, time);
 
-
-
 figure(1)
 utils.input_output_power(in_ring, out_ring_plot,t ,y, A_time);
 
 figure(2)
 graph_drawer.spectrum_fsr(Df, H_drop, H_ODE, IN_ring, fsr, n_fsr_range);
-%graph_drawer.spectrum_f(Df, H_drop, H_ODE, IN_ring, A_time);
+figure(3)
+graph_drawer.spectrum_f(Df, H_drop, H_ODE, IN_ring, A_time);
 
-chunk_size = 1e5; 
+% comuting rmse
 sum_sq_diff = 0;
 N_total = length(time); 
-for i = 1:chunk_size:N_total
-    end_idx = min(i + chunk_size - 1, N_total);
+for i = 1:N:N_total
+    end_idx = min(i + N - 1, N_total);
     
     chunk_y = interp1(t, y, time(i:end_idx), 'linear', 0);
     chunk_out = out_ring_plot(i:end_idx);

@@ -127,7 +127,7 @@ classdef graph_drawer
 
             grid on;
             xlabel('Phase Detuning \Delta\phi [rad]');
-            ylabel('Power lost [dB]');
+            ylabel('Power loss [dB]');
             title('Power loss vs Phase detuning');
             legend('show', 'Location', 'southwest');
             xlim([min(phase_detuning) max(phase_detuning)]);
@@ -236,6 +236,10 @@ classdef graph_drawer
                 fscale = 'Frequency [PHz]';
             elseif scale >= 1e3
                 fscale = 'Frequency [THz]';
+            elseif scale >= 1e2
+                fscale = 'Frequency [100 GHz]';
+            elseif scale > 10
+                fscale = 'Frequency [10 GHz]';
             elseif scale >= 1
                 fscale = 'Frequency [GHz]';
             elseif scale >= 1e-3
