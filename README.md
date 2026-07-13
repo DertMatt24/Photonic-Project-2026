@@ -533,3 +533,69 @@ graph_drawer.plot_rmse(delta_f_array, rmse_det);
 # Extension to N-th order
 
 # LTI solver
+
+## Microring Resonator as LTI Differential Equation Solver
+
+By considering the through port as the output port, we can solve Linear-Time-Invariant (LTI) differential equations (where the derivative of the input signal appears).
+
+## Diagram
+<img src="img/1st_model.png">
+
+*Add-drop MRR with two directional couplers – Image taken from the paper «Compact tunable silicon photonic differential-equation solver for general linear time-invariant systems» - Wu et al.*
+
+---
+
+## Mathematical Model
+
+### LTI Equation
+The system can be described by the following differential equation:
+
+$$\frac{dy(t)}{dt} + a_0 y(t) = b_1 \frac{dx(t)}{dt} + b_0 x(t)$$
+
+### Frequency Domain Representation
+By applying the Fourier transform, we can write the equation in the frequency domain as:
+
+$$H(\omega) = \frac{b_1 j\omega + b_0}{j\omega + a_0}$$
+
+### MRR Through Port
+The transfer function at the MRR Through Port is proportional to:
+
+$$H_{tr}(\omega) \propto \frac{j\omega + b_0 / b_1}{j\omega + a_0}$$
+
+> **Note:** Moreover, the $b_1$ parameter will be always equal to $1$ for a single MRR
+
+# Problem as a First Order LTI System
+
+## Circuit: Passive Lead-Lag Network ($R_1 \parallel C$ in Series, $R_2$ to Ground)
+
+Given a passive lead-lag RC network consisting of a resistor $R_1$ in parallel with a capacitor $C$, connected between the input node and the output node, followed by a resistor $R_2$ connecting the output node to ground. 
+
+## Diagram
+[Lead-lag network circuit diagram]
+<center><img src="img/LeadLag.png"></center>
+
+## Mathematical Model
+
+The circuit is described by the following first-order Linear-Time-Invariant (LTI) differential equation:
+
+$$\frac{dv_o(t)}{dt} + \frac{R_1 + R_2}{C R_1 R_2} v_o(t) = \frac{dv_i(t)}{dt} + \frac{1}{R_1 C} v_i(t)$$
+
+Where:
+* **$v_o(t)$** is the voltage we want to measure (output voltage)
+* **$v_i(t)$** is the input signal (input voltage)
+* **$R_1, R_2$** are the resistances
+* **$C$** is the capacitance
+
+For simplicity, we assign the following component values:
+* $C = 1 \text{ nF}$
+* $R_1 = 16 \text{ m}\Omega$
+* $R_2 = 16 \text{ m}\Omega$
+
+From these data, we can model a Microring Resonator (MRR).
+
+---
+
+## Assumptions
+* **No chromatic dispersion:** $n_g = n_{\text{eff}}$
+* **Ideal case:** $\alpha = 0$ (no power line losses)
+* **Initial condition:** $v_o(0) = 0$
