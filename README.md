@@ -213,6 +213,138 @@ In this worst-case scenario, the system experiences maximum attenuation, consumi
 
 ## Extension to N-th order
 
+A single MRR provides a single pole, so it can only solve a first-order equation. To reach a higher order we need more poles, and we obtain them by cascading several microring resonators: the drop port of each ring is connected to the input of the next one.
+
+Since the rings are optically in series, their transfer functions multiply. If ring $i$ has coefficient $k_i$, the response of the whole chain is:
+
+$$H_N(\omega) = \prod_{i=1}^{N} \frac{1}{k_i + j\omega}$$
+
+Expanding the denominator gives a polynomial of degree $N$ in $j\omega$, which in the time domain corresponds to the operator:
+
+$$\prod_{i=1}^{N} \left( \frac{d}{dt} + k_i \right) y(t) = x(t)$$
+
+So a cascade of $N$ rings solves an $N$-th order linear ODE with constant coefficients, and each ring contributes exactly one root at $-k_i$. Written in the usual form the equation becomes:
+
+$$\frac{d^N y}{dt^N} + a_{N-1} \frac{d^{N-1} y}{dt^{N-1}} + \cdots + a_1 \frac{dy}{dt} + a_0 y = x(t)$$
+
+where the coefficients $a_j$ are the elementary symmetric functions of the roots:
+
+$$a_{N-1} = \sum_{i=1}^{N} k_i \qquad \qquad a_0 = \prod_{i=1}^{N} k_i$$
+
+This means that we do not set the coefficients of the equation directly: we set the roots, one per ring, and the coefficients follow from them.
+
+### Repeated and distinct roots
+
+If all the rings are tuned to the same $k$, the characteristic polynomial has one root repeated $N$ times and the equation reduces to:
+
+$$\left( \frac{d}{dt} + k \right)^{N} y(t) = x(t)$$
+
+If instead every ring is tuned to a different $k_i$, we obtain a general $N$-th order equation with $N$ distinct real roots. We chose the second case, because it is the more general one and because it shows that the tunability of the single ring is preserved at higher orders: every ring keeps its own voltage, so we have $N$ independent knobs to place $N$ poles anywhere inside the tunable range.
+
+> **Note:** The drop port is a single-pole Lorentzian and its pole always lies on the negative real axis. Multiplying such terms can never produce a complex-conjugate pair, so this cascade can only solve over-damped equations. Any equation whose solution oscillates is out of reach and requires the interferometric through-port scheme described in the next chapter.
+
+### Implementation
+
+In our code we implemented a class called <samp>mrr_cascade.m</samp>, which holds $N$ objects of the <samp>mrr</samp> class (one per stage) and combines them. The constructor takes the shared geometry and a vector of coefficients: passing a scalar broadcasts the same $k$ to all the rings (repeated root), while passing a vector assigns a different $k_i$ to each ring (distinct roots). The total drop-port response is obtained by multiplying the responses of the single rings, and the ideal ODE response is built in the same way from the ideal Lorentzians, so that the two can be compared at every order. The class also accepts one detuning value per ring, which we use for the phase-detuning analysis.
+
+To verify the model we solved the same equation directly in the time domain and compared it with the cascade computed in the frequency domain. To do this we rewrote the $N$-th order equation as a system of $N$ first-order equations in companion form:
+
+$$\mathbf{z} = \begin{bmatrix} y \\ y' \\ \vdots \\ y^{(N-1)} \end{bmatrix} \qquad \mathbf{z}' = \begin{bmatrix} 0 & 1 & 0 & \cdots & 0 \\ 0 & 0 & 1 & \cdots & 0 \\ \vdots & & & \ddots & \vdots \\ -a_0 & -a_1 & -a_2 & \cdots & -a_{N-1} \end{bmatrix} \mathbf{z} + \begin{bmatrix} 0 \\ \vdots \\ 0 \\ x(t) \end{bmatrix}$$
+
+and integrated it with <samp>ode45</samp>. The two solutions overlap, which confirms that the chain of rings is really solving the equation we expect.<br>
+The output of the cascade is delayed with respect to the input and reaches its maximum well after the pulse has passed. This is the expected behaviour: the cascade accumulates the input and then relaxes with the cavity lifetimes of the rings, so the solution lags the forcing term.
+
+Parameters used for the rings:
+
+* $R = 30 \; \mu m$, $n_{eff} = 2.4$, lossless ($\alpha = 0$)
+* $FSR = 663 \; GHz$
+* $k_i = [53.1, \; 59.4, \; 65.6, \; 71.9] \; ns^{-1}$ for the 4th order case
+* All the $k_i$ are inside the tunable range $[38, \; 82] \; ns^{-1}$ reported by Yang et al.
+
+Assumptions:
+
+* No chromatic dispersion: $n_g = n_{eff}$
+* Ideal case: $\alpha = 0$ (no power line losses)
+* Identical geometry for every ring
+* $y(0) = 0$, together with all its derivatives
+
+The radius does not set the equation (the coefficient $k$ does that), it sets the FSR. We kept the FSR much larger than the bandwidth of the input signal ($\approx 17 \; GHz$), so that the pulse interacts with a single resonance and the neighbouring ones do not distort the result.<br>
+As input we used both a Gaussian and a super-Gaussian pulse, with the FWHM values reported in the paper ($19.07 \; ps$ and $41.54 \; ps$), so that the two cases can be compared at every order.
+
+### Numerical considerations
+
+Building the frequency grid requires some care. The resonance of the ring is narrow compared to the FSR, so if the time step $dt$ is taken from the ODE time span the frequency axis ends up covering hundreds of FSRs and only one or two samples fall on the resonance peak. In that case the point at $\Delta f = 0$ does not land exactly on the resonance, and the results show spurious ripples.
+
+We therefore fixed $dt$ from the FSR:
+
+$$dt = \frac{1}{2 \cdot n_{FSR} \cdot FSR}$$
+
+and derived the number of samples from the time window, chosen long enough for the solution to decay completely. With the frequency axis built on the FFT bin centres, $\Delta f = 0$ falls exactly on the resonance.
+
+### Spectrum of the cascade
+
+Every added ring multiplies in another Lorentzian, so the passband becomes narrower and the roll-off steeper as the order grows. The first order decays slowly away from the resonance, while the fourth order falls much faster: this is the frequency-domain picture of the higher-order derivative appearing in the equation.
+
+Inside the passband, where the input signal actually lives, the response of the cascade follows the ideal ODE very closely: the order-4 curve and the dashed ideal curve are practically superimposed. The two separate only far in the stopband, and near $\pm 1 \; FSR$ the periodic comb of the real ring becomes visible, showing the neighbouring resonances that the ideal Lorentzian does not have. This difference is the origin of the computing error.<br>
+The two inputs also behave differently in frequency. The Gaussian has a smooth spectrum that decays monotonically, while the super-Gaussian, being flat-topped in time, shows the typical sidelobes. Since the sidelobes fall well outside the passband of the cascade, they are strongly attenuated and do not degrade the solution.
+
+<img width="392" height="294" alt="Spectra by order - gaussian" src="img/Spectra by order - gaussian.png" /> <br>
+<img width="392" height="294" alt="Spectra by order - super-gaussian" src="img/Spectra by order - super-gaussian.png" />
+
+### Power over the order
+
+Each stage has a DC gain of $1/k_i$, so $N$ stages give an overall gain of:
+
+$$H_N(0) = \prod_{i=1}^{N} \frac{1}{k_i}$$
+
+The insertion loss therefore increases steadily with the order, adding a few dB per ring. This is the real cost of cascading, and it is what limits in practice how far we can push the order without amplifying the signal again between the stages.<br>
+We also measured the loss with respect to the ideal ODE, which we call the shape loss, to separate the trivial attenuation from an actual distortion of the waveform. Its magnitude grows monotonically with the order but stays below $0.18 \; dB$ even at the fourth order: the output is dimmer, but its shape is essentially preserved. Cascading costs power, not fidelity.
+
+<img width="392" height="294" alt="Insertion loss vs order" src="img/insertion_loss.png" /> <br>
+<img width="392" height="294" alt="Shape loss vs order" src="img/shape_loss.png" />
+
+### Accuracy over the order
+
+The small mismatch between the real ring and the ideal Lorentzian compounds along the chain, so the RMSE grows with the order. The growth is gradual and predictable, which is a good sign: the cascade degrades smoothly instead of breaking down at some order.<br>
+The super-Gaussian input is consistently better than the Gaussian one at every order and on every metric. Its spectrum is more concentrated around the resonance, and the region where the real ring departs from the ideal Lorentzian is exactly the high-frequency one, so less of the signal energy sits where the model is wrong.
+
+The values obtained with $k_i = [53.1, \; 59.4, \; 65.6, \; 71.9] \; ns^{-1}$, taking the first $N$ of them for each order, are the following.
+
+**Gaussian input** ($FWHM = 19.07 \; ps$):
+
+| Order $N$ | Insertion loss [dB] | Shape loss [dB] | RMSE |
+| :--- | :--- | :--- | :--- |
+| 1 | -3.13 | -0.104 | 0.0054 |
+| 2 | -4.61 | -0.144 | 0.0085 |
+| 3 | -5.44 | -0.163 | 0.0100 |
+| 4 | -5.96 | -0.176 | 0.0110 |
+
+**Super-Gaussian input** ($FWHM = 41.54 \; ps$):
+
+| Order $N$ | Insertion loss [dB] | Shape loss [dB] | RMSE |
+| :--- | :--- | :--- | :--- |
+| 1 | -1.96 | -0.080 | 0.0041 |
+| 2 | -3.03 | -0.120 | 0.0065 |
+| 3 | -3.69 | -0.143 | 0.0084 |
+| 4 | -4.15 | -0.158 | 0.0097 |
+
+The RMSE roughly doubles going from the first to the fourth order, but it stays around $1\%$, so the cascade is still solving the equation with good accuracy at the highest order we tested.
+
+### Phase detuning for high-order ODEs
+
+All the rings share the same laser and the same optical path, so they detune together and we apply the same $\Delta f$ to the whole chain.
+
+The transmitted power is maximum when the signal sits on the resonance and falls very steeply on both sides, reaching about $-110 \; dB$ at half an FSR of detuning. The fall is much sharper than for a single ring, because each ring attenuates the off-resonance signal and the four attenuations multiply. A high-order cascade is therefore considerably more sensitive to a misalignment than a single ring, which is a real constraint for the fabrication and the thermal stability of the device.<br>
+The response is periodic with the FSR: after a full FSR of detuning the signal lands on the next resonance of the comb and the transmission is completely recovered. The minima are found exactly halfway between two resonances, at $\Delta f = \pm 0.5 \; FSR$, where the signal is as far as possible from any resonance. This periodicity is the fundamental constraint on the operating window of the device, and it is the same property that limits the processing bandwidth of the single ring.
+
+<img width="392" height="294" alt="Power loss vs phase detuning - gaussian" src="img/power loss vs phase detnuninggaussian.png" /> <br>
+<img width="392" height="294" alt="Power loss vs phase detuning - super-gaussian" src="img/power loss vs phase detnuningsuper-gaussian.png" />
+
+The RMSE follows the same behaviour. It has a sharp minimum of about $0.01$ exactly on resonance, and at every multiple of the FSR, and it rises very quickly to a plateau of about $0.26$ everywhere else. The plateau is not a measure of the error of the solver: once the signal is off resonance almost no light reaches the output, so the device is simply not solving the equation any more and the comparison with the exact solution loses its meaning. The useful information is the width of the dip, which tells us how precisely the laser has to be aligned to the resonance.
+
+<img width="392" height="294" alt="RMSE vs phase detuning - gaussian" src="img/rmse vs phase detnuninggaussian.png" /> <br>
+<img width="392" height="294" alt="RMSE vs phase detuning - super-gaussian" src="![alt text](<img/rmse vs phase detnuningsuper-gaussian.png>)" />
+
 ## LTI Equation
 The system can be described by the following differential equation:
 
